@@ -1,0 +1,122 @@
+#sws draft ####
+# to filter a dataset:
+#create a subset of workers who earn greater than 2000 and less than 100000:
+
+#explain in the table how covid in 2020 affect a variable that I select like health care o food, and 
+#then say something about the next years with housing 
+
+SWS 
+## This project is about analysing how the expenditures were affected by the COVID in 2020 and the inflation in 2022-2023. How clothing expenditures are affected by income and family demographics. 
+
+#append two tada set into CE1923
+CE1923<-rbind(CE2023,CE19)
+table(EGR1823$saleyear)
+
+#filter data in income and age of the head of the family 
+CE2<- subset(CE1923, income<3000000 & income>0 & age_ref<65 & age_ref>24)
+
+#mean income and education by gender
+library(vtable)
+st(CE1923, vars=c("housing","food","transportation","health","entertainment","education","clothing","retpenpins","utilities","foodhome","foodaway","vehiclefuel","medicalcare","homefurnishing","travel"), summ=c("mean(x)"), group="year", factor.numeric =TRUE,title = "Table 1: Summary Statistics")
+
+#summary table comparing expenditure across years
+library(dplyr)
+summary_table <- CE2 %>%
+  group_by(year) %>%
+  summarize(
+    mean_expenditure = mean(clothing, na.rm = TRUE),
+    median_expenditure = median(clothing, na.rm = TRUE),
+    sd_expenditure = sd(clothing, na.rm = TRUE),
+    n = n()
+  )
+
+print(summary_table)
+
+
+
+# graph 1 means of clothing expenditures across year-quarters
+library(dplyr)
+library(ggplot2)
+
+CE2 <- CE2 %>%
+  mutate(year_quarter = paste0(year, " Q", quarter))
+
+# Compute means
+expenditure_yq <- CE2 %>%
+  group_by(year_quarter) %>%
+  summarize(mean_exp = mean(clothing, na.rm = TRUE))
+
+expenditure_yq_clean <- expenditure_yq %>% filter(!is.na(mean_exp))
+
+ggplot(expenditure_yq_clean, aes(x = year_quarter, y = mean_exp, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Figure 1: Mean Clothing Expenditure Across Year-Quarters",
+    x = "Year-Quarter",
+    y = "Mean Expenditure ($)"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#graph 2 means of income across years
+income_year <- CE2 %>%
+  group_by(year) %>%
+  summarize(mean_income = mean(income, na.rm = TRUE))
+
+ggplot(income_year, aes(x = year, y = mean_income)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Figure 2: Mean Income Across Years",
+    x = "Year",
+    y = "Mean Income ($)"
+  )
+
+
+
+
+#graph 3 mean expenditure by income bracket - we want to check if spending rises with income
+ggline(data=CE2, x="incomebracket25k",y="clothing",
+       add = "mean",
+       ylab= "Mean Clothing Expenditure",
+       xlab= "Income Bracket ($25k)")+
+  ggtitle("Figure 3: Clothing Expenditure compared with Income Bracket")+
+  rotate_x_text()
+
+#graph 4 mean expenditure by agegroup
+ggline(data=CE2, x="agegroup_ref",y="clothing",
+       add = "mean",
+       ylab= "Mean Clothing Expenditure ",
+       xlab= "Age Group")+
+  ggtitle("Figure 4: Mean Clothing Expenditure compared with Age Group")+
+  rotate_x_text()
+
+#graph 5 mean expenditure by family size
+ggline(data=CE2, x="famsizecap",y="clothing",
+       add = "mean",
+       ylab= "Mean Clothing Expenditure",
+       xlab= "Family Size")+
+  ggtitle("Figure 5: Mean Clothing Expenditure compared with Family Size")
+
+#graph 6 mean expenditure by raceethnicity_ref
+ggbarplot(data= CE2, x = "raceethnicity_ref", y = "clothing",
+          add = "mean", label = TRUE, lab.nb.digit = 0,
+          ylab = "Mean Clothing Expenditure", xlab = "Race & Ethnicity") +
+  ggtitle("Figure 6: Mean Clothing Expenditure compared with Race and Ethnicity")
+
+#regression 
+CE2$logincome <- log(CE2$income)
+CE2 <- na.omit(CE2)   #removes rows with NaN or -Inf
+
+model <- lm(data = CE2,log(clothing) ~ log(income) +
+              agegroup_ref +
+              famsizecap +
+              raceethnicity_ref +
+              factor(year),
+            subset = clothing>0 & income>0)
+
+summary(model)
+
+
+
